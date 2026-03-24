@@ -249,38 +249,78 @@ function renderNow() {
 // ===========================
 function renderAgents() {
   const agents = state.data.agents || [];
+  const mainAgent = agents.find(a => (a.name || '').toLowerCase().includes('dr. swanosten')) || agents[0];
 
   let html = `<div class="section-header">
-    <span class="section-title">Agents</span>
-    <span class="section-count-pill">${agents.length}</span>
+    <span class="section-title">Équipe</span>
+    <span class="section-count-pill">1</span>
   </div>`;
 
-  if (agents.length === 0) {
-    return html + emptyState('🤖', 'Aucun agent actif.');
+  if (!mainAgent) {
+    return html + emptyState('🦅', 'Dr. Swanosten indisponible.');
   }
 
-  agents.forEach(agent => {
-    const statusLow = (agent.status || '').toLowerCase();
-    const isRunning = statusLow.includes('run');
-    const isBlocked = statusLow.includes('block');
-    const badgeClass = isRunning ? 'badge-running' : isBlocked ? 'badge-blocked' : 'badge-idle';
-    const dotClass  = isRunning ? 'dot-running' : isBlocked ? 'dot-blocked' : 'dot-idle';
-    const statusText = isRunning ? 'Actif' : isBlocked ? 'Bloqué' : 'Inactif';
+  const statusLow = (mainAgent.status || '').toLowerCase();
+  const isRunning = statusLow.includes('run');
+  const isBlocked = statusLow.includes('block');
+  const badgeClass = isRunning ? 'badge-running' : isBlocked ? 'badge-blocked' : 'badge-idle';
+  const dotClass  = isRunning ? 'dot-running' : isBlocked ? 'dot-blocked' : 'dot-idle';
+  const statusText = isRunning ? 'Actif' : isBlocked ? 'Bloqué' : 'Inactif';
 
-    html += `
-      <div class="agent-row">
-        <div class="agent-avatar">${agentEmoji(agent.name)}</div>
-        <div class="agent-body">
-          <p class="agent-name">${esc(agent.name)}</p>
-          <p class="agent-mission">${esc(agent.mission || agent.role || '—')}</p>
+  html += `
+    <details class="agent-accordion" open>
+      <summary class="agent-summary">
+        <div class="agent-row agent-row-single">
+          <div class="agent-avatar">🦅</div>
+          <div class="agent-body">
+            <p class="agent-name">Dr. Swanosten</p>
+            <p class="agent-mission">${esc(mainAgent.mission || 'Prioritize, structure, execute.')}</p>
+          </div>
+          <div class="agent-status-badge ${badgeClass}">
+            <span class="status-dot ${dotClass}"></span>
+            ${esc(statusText)}
+          </div>
         </div>
-        <div class="agent-status-badge ${badgeClass}">
-          <span class="status-dot ${dotClass}"></span>
-          ${esc(statusText)}
+      </summary>
+
+      <div class="agent-panel">
+        <div class="info-block">
+          <p class="info-label">Rôle</p>
+          <p class="info-value">${esc(mainAgent.role || 'Chief operator')}</p>
+        </div>
+
+        <div class="info-block">
+          <p class="info-label">Ce qu’il fait</p>
+          <p class="info-value">${esc(mainAgent.mission || 'Prioritize, structure, push approvals')}</p>
+        </div>
+
+        <div class="info-block">
+          <p class="info-label">Dernier output</p>
+          <p class="info-value">${esc(mainAgent.output || '—')}</p>
+        </div>
+
+        <div class="info-block">
+          <p class="info-label">Workspace principal</p>
+          <p class="info-value info-code">/Users/swanosten/Desktop/OBSIDIAN/swanosten/Agent/Dr-Swanosten</p>
+        </div>
+
+        <div class="info-block">
+          <p class="info-label">Mémoire</p>
+          <p class="info-value info-code">/Users/swanosten/Desktop/OBSIDIAN/swanosten/Memory</p>
+        </div>
+
+        <div class="info-block">
+          <p class="info-label">Logs quotidiens</p>
+          <p class="info-value info-code">/Users/swanosten/Desktop/OBSIDIAN/swanosten/Memory/memory</p>
+        </div>
+
+        <div class="info-block">
+          <p class="info-label">Source runtime</p>
+          <p class="info-value info-code">${esc(mainAgent.source || 'Agent/Dr-Swanosten/.openclaw/workspace-state.json')}</p>
         </div>
       </div>
-    `;
-  });
+    </details>
+  `;
 
   return html;
 }
