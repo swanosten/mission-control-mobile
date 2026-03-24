@@ -1,0 +1,38 @@
+[
+  {
+    "title": "création de contenu pour nuho.ch",
+    "project": "Nuho",
+    "owner": "Elias",
+    "priority": "P0",
+    "status": "Ready",
+    "deadline": "This week",
+    "next": "création de contenu pour nuho.ch",
+    "blocker": "",
+    "since": "",
+    "source": "EliasOS/06_CURRENT_FOCUS.md"
+  },
+  {
+    "title": "vidéo signée, avancer sur la production",
+    "project": "Norquain (Quantum)",
+    "owner": "Elias",
+    "priority": "P0",
+    "status": "Ready",
+    "deadline": "This week",
+    "next": "vidéo signée, avancer sur la production",
+    "blocker": "",
+    "since": "",
+    "source": "EliasOS/06_CURRENT_FOCUS.md"
+  },
+  {
+    "title": "préparer la présentation",
+    "project": "Tissot (Quantum)",
+    "owner": "Elias",
+    "priority": "P0",
+    "status": "Ready",
+    "deadline": "This week",
+    "next": "préparer la présentation",
+    "blocker": "",
+    "since": "",
+    "source": "EliasOS/06_CURRENT_FOCUS.md"
+  }
+]

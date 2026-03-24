@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Dr. Swanosten",
+    "role": "Chief operator",
+    "status": "Running",
+    "mission": "Prioritize, structure, push approvals",
+    "output": "Workspace ready since 2026-03-23T09:38:17.094Z",
+    "cost": "unknown",
+    "throughput": "17 heartbeat logs captured",
+    "escalations": "10 blockers in memory logs",
+    "blockers": "Needs richer session telemetry from OpenClaw logs",
+    "source": "Agent/Dr-Swanosten/.openclaw/workspace-state.json"
+  },
+  {
+    "name": "OpenClaw workspace",
+    "role": "Runtime bootstrap",
+    "status": "Running",
+    "mission": "Keep the local workspace paired and initialized",
+    "output": "Onboarding completed at 2026-03-12T09:43:59.912Z",
+    "cost": "unknown",
+    "throughput": "unknown",
+    "escalations": "unknown",
+    "blockers": "Only bootstrap snapshot available locally",
+    "source": ".openclaw/workspace-state.json"
+  },
+  {
+    "name": "Project pulse",
+    "role": "Derived local monitor",
+    "status": "Running",
+    "mission": "Aggregate project and task signals from the vault",
+    "output": "9 projects parsed from EliasOS",
+    "cost": "0 backend",
+    "throughput": "6 projects with health",
+    "escalations": "2 high-risk projects",
+    "blockers": "Missing per-agent OpenClaw session snapshots",
+    "source": "EliasOS/02_PROJECTS.md"
+  }
+]

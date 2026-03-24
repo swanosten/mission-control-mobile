@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mission Control — Elias</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div>
+        <div class="brand">
+          <div class="brand-mark">MC</div>
+          <div>
+            <p class="eyebrow">Elias Operating Layer</p>
+            <h1>Mission Control</h1>
+          </div>
+        </div>
+
+        <nav class="nav" id="nav"></nav>
+      </div>
+
+      <div class="sidebar-card">
+        <p class="sidebar-label">Focus of the day</p>
+        <h3>Loading local focus…</h3>
+        <p class="muted">Reading refreshed local data sources.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Executive cockpit</p>
+          <h2 id="view-title">Mission Control</h2>
+        </div>
+        <div class="topbar-meta">
+          <div class="status-pill live">Live local data</div>
+          <div class="status-pill" id="clock"></div>
+        </div>
+      </header>
+
+      <section class="kpi-grid" id="kpi-grid"></section>
+      <section id="view-content"></section>
+    </main>
+  </div>
+
+  <template id="home-template">
+    <div class="grid two-col">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Execution map</p>
+            <h3>Now / Next / Later</h3>
+          </div>
+        </div>
+        <div class="tri-grid" id="priority-lanes"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Immediate pressure</p>
+            <h3>Critical alerts</h3>
+          </div>
+          <span class="badge critical">Act now</span>
+        </div>
+        <div id="alerts-list" class="stack"></div>
+      </section>
+    </div>
+
+    <div class="grid two-col">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Needs Elias now</p>
+            <h3>Decision panel</h3>
+          </div>
+        </div>
+        <div id="decision-panel" class="stack"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Portfolio signal</p>
+            <h3>Project health matrix</h3>
+          </div>
+        </div>
+        <div id="health-matrix"></div>
+      </section>
+    </div>
+
+    <div class="grid two-col">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Value</p>
+            <h3>Impact snapshot</h3>
+          </div>
+        </div>
+        <div id="impact-grid" class="impact-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Last 48h</p>
+            <h3>Today timeline</h3>
+          </div>
+        </div>
+        <div id="timeline-preview" class="timeline"></div>
+      </section>
+    </div>
+  </template>
+
+  <template id="agents-template">
+    <div class="grid three-col" id="agents-grid"></div>
+    <div class="grid two-col">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Throughput</p>
+            <h3>Agent performance</h3>
+          </div>
+        </div>
+        <div id="agent-metrics"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Friction</p>
+            <h3>Agent issues</h3>
+          </div>
+        </div>
+        <div id="agent-issues" class="stack"></div>
+      </section>
+    </div>
+  </template>
+
+  <template id="tasks-template">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Operational queue</p>
+          <h3>Compact kanban</h3>
+        </div>
+      </div>
+      <div id="kanban" class="kanban"></div>
+    </div>
+
+    <div class="grid two-col">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Execution detail</p>
+            <h3>Task table</h3>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tâche</th>
+                <th>Projet</th>
+                <th>Owner</th>
+                <th>Priorité</th>
+                <th>Deadline</th>
+                <th>Next step</th>
+              </tr>
+            </thead>
+            <tbody id="task-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Blockers</p>
+            <h3>Blocked tasks</h3>
+          </div>
+        </div>
+        <div id="blocked-tasks" class="stack"></div>
+      </section>
+    </div>
+  </template>
+
+  <template id="projects-template">
+    <div class="grid three-col" id="projects-grid"></div>
+    <div class="grid two-col">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Revenue & value</p>
+            <h3>Client value view</h3>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Current</th>
+                <th>Potential</th>
+                <th>Risk</th>
+                <th>Effort</th>
+              </tr>
+            </thead>
+            <tbody id="value-table"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Project drilldown</p>
+            <h3>Risks & next decisions</h3>
+          </div>
+        </div>
+        <div id="project-details" class="stack"></div>
+      </section>
+    </div>
+  </template>
+
+  <template id="decisions-template">
+    <div class="grid two-col">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Approval inbox</p>
+            <h3>Pending validations</h3>
+          </div>
+        </div>
+        <div id="approval-inbox" class="stack"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Overdue</p>
+            <h3>Impact x delay</h3>
+          </div>
+        </div>
+        <div id="overdue-approvals" class="stack"></div>
+      </section>
+    </div>
+  </template>
+
+  <template id="timeline-template">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Activity log</p>
+          <h3>Chronological feed</h3>
+        </div>
+      </div>
+      <div class="filter-bar" id="filters"></div>
+      <div id="full-timeline" class="timeline full"></div>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
