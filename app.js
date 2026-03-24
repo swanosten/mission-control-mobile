@@ -1,8 +1,5 @@
-// ===========================
-// STATE
-// ===========================
 const state = {
-  section: 'now',
+  section: 'live',
   projectSlug: null,
   data: null,
   error: null
@@ -16,51 +13,16 @@ function esc(val) {
   })[c]);
 }
 
-// ===========================
-// DARK MODE TOGGLE
-// ===========================
-function setupThemeToggle() {
-  const btn = document.getElementById('theme-toggle');
-  const moonIcon = document.getElementById('icon-moon');
-  const sunIcon = document.getElementById('icon-sun');
-  if (!btn) return;
-
-  // Load saved preference
-  const saved = localStorage.getItem('mc-theme');
-  if (saved) {
-    document.documentElement.setAttribute('data-theme', saved);
-  }
-
-  function updateIcons() {
-    const current = document.documentElement.getAttribute('data-theme');
-    const isDark = current === 'dark' ||
-      (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    if (moonIcon) moonIcon.style.display = isDark ? 'none' : 'block';
-    if (sunIcon)  sunIcon.style.display  = isDark ? 'block' : 'none';
-  }
-
-  updateIcons();
-
-  btn.addEventListener('click', () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    const isDark = current === 'dark' ||
-      (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    const next = isDark ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('mc-theme', next);
-    updateIcons();
-  });
-}
-
-// ===========================
-// INIT
-// ===========================
 async function init() {
   renderDate();
+  setupThemeToggle();
   setupTabs();
   setupRefresh();
-  setupThemeToggle();
+  await loadData();
+  render();
+}
 
+async function loadData() {
   const btn = $('#refresh-btn');
   if (btn) btn.classList.add('spinning');
 
@@ -71,31 +33,46 @@ async function init() {
     state.error = null;
   } catch (err) {
     state.error = err;
+    state.data = null;
   }
 
   if (btn) btn.classList.remove('spinning');
-  render();
 }
 
 function renderDate() {
   const el = $('#header-date');
   if (!el) return;
-  const now = new Date();
-  el.textContent = now.toLocaleDateString('fr-CH', {
-    weekday: 'long', day: 'numeric', month: 'long'
-  }).replace(/^\w/, c => c.toUpperCase());
+  el.textContent = new Date().toLocaleDateString('en-CH', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  });
 }
 
-function setupRefresh() {
-  const btn = $('#refresh-btn');
-  if (!btn) return;
-  btn.addEventListener('click', async () => {
-    state.data = null;
-    state.error = null;
-    const feed = $('#feed');
-    if (feed) feed.innerHTML = loadingHTML();
-    await init();
+function setupThemeToggle() {
+  const btn = $('#theme-toggle');
+  const icon = $('#theme-icon');
+  const saved = localStorage.getItem('mc-theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+
+  const refreshIcon = () => {
+    const theme = currentTheme();
+    if (icon) icon.textContent = theme === 'dark' ? '◑' : '◐';
+  };
+
+  refreshIcon();
+  btn?.addEventListener('click', () => {
+    const next = currentTheme() === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('mc-theme', next);
+    refreshIcon();
   });
+}
+
+function currentTheme() {
+  const forced = document.documentElement.getAttribute('data-theme');
+  if (forced) return forced;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function setupTabs() {
@@ -104,9 +81,17 @@ function setupTabs() {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       state.section = tab.dataset.section;
-      state.projectSlug = null;
+      if (state.section !== 'projects') state.projectSlug = null;
       render();
     });
+  });
+}
+
+function setupRefresh() {
+  $('#refresh-btn')?.addEventListener('click', async () => {
+    $('#feed').innerHTML = loadingHTML();
+    await loadData();
+    render();
   });
 }
 
@@ -114,215 +99,189 @@ function loadingHTML() {
   return `<div class="loading-state"><div class="loading-dots"><span></span><span></span><span></span></div></div>`;
 }
 
-// ===========================
-// RENDER ROUTER
-// ===========================
 function render() {
   const feed = $('#feed');
   if (!feed) return;
-
   if (state.error) {
     feed.innerHTML = renderErrorState();
     return;
   }
-
   if (!state.data) {
     feed.innerHTML = loadingHTML();
     return;
   }
 
-  const renderers = { now: renderNow, agents: renderAgents, projects: renderProjects, decide: renderDecide, log: renderLog };
-  feed.innerHTML = (renderers[state.section] || renderNow)();
+  const routes = {
+    live: renderLive,
+    projects: renderProjects,
+    agent: renderAgent,
+    decisions: renderDecisions
+  };
+
+  feed.innerHTML = (routes[state.section] || renderLive)();
+  wireInteractions();
   feed.scrollTop = 0;
 }
 
-// ===========================
-// HELPERS
-// ===========================
-function healthColor(health) {
-  if (!health) return 'gray';
-  const h = health.toLowerCase();
-  if (h.includes('track') || h.includes('active')) return 'green';
-  if (h.includes('block')) return 'red';
-  if (h.includes('risk') || h.includes('wait')) return 'orange';
-  if (h.includes('launch') || h.includes('mvp')) return 'blue';
-  if (h.includes('hold') || h.includes('pause')) return 'gray';
-  return 'gray';
+function wireInteractions() {
+  document.querySelectorAll('[data-project-open]').forEach(btn => {
+    btn.onclick = () => {
+      state.section = 'projects';
+      state.projectSlug = btn.dataset.projectOpen;
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.section === 'projects'));
+      render();
+    };
+  });
+
+  $('#back-to-projects')?.addEventListener('click', () => {
+    state.projectSlug = null;
+    render();
+  });
 }
 
-function projectAccentClass(project) {
-  if (!project) return '';
-  const p = project.toLowerCase();
-  if (p.includes('gamal') || p.includes('dna')) return 'red';
-  if (p.includes('luna')) return 'purple';
-  if (p.includes('nuho')) return 'green';
-  if (p.includes('badra') || p.includes('cosmo')) return 'orange';
-  if (p.includes('syn') || p.includes('perfume')) return 'orange';
-  return '';
+function sectionTitle(title, meta = '') {
+  return `
+    <div class="section-head">
+      <h2>${esc(title)}</h2>
+      ${meta ? `<span class="section-meta">${esc(meta)}</span>` : ''}
+    </div>
+  `;
 }
 
-function severityColor(severity) {
-  if (!severity) return 'gray';
-  if (severity === 'critical') return 'red';
-  if (severity === 'risk') return 'orange';
-  return 'blue';
+function cardShell(label, title, body = '', extraClass = '') {
+  return `
+    <section class="card ${extraClass}">
+      ${label ? `<p class="card-label">${esc(label)}</p>` : ''}
+      <h3 class="card-title">${esc(title)}</h3>
+      ${body}
+    </section>
+  `;
 }
 
-// ===========================
-// NOW TAB
-// ===========================
-function renderNow() {
+function statusTone(status = '') {
+  const s = status.toLowerCase();
+  if (s.includes('block')) return 'blocked';
+  if (s.includes('wait')) return 'waiting';
+  if (s.includes('risk')) return 'risk';
+  if (s.includes('track') || s.includes('active') || s.includes('launch') || s.includes('ready') || s.includes('run')) return 'working';
+  return 'neutral';
+}
+
+function prettyStatus(status = '') {
+  const tone = statusTone(status);
+  return tone === 'blocked' ? 'Blocked' : tone === 'waiting' ? 'Waiting' : tone === 'risk' ? 'At risk' : tone === 'working' ? 'Working' : 'Unknown';
+}
+
+function statusPill(status) {
+  const tone = statusTone(status);
+  return `<span class="pill pill-${tone}">${esc(prettyStatus(status))}</span>`;
+}
+
+function deriveLiveSignal(d) {
+  const timeline = d.timeline || [];
+  const tasks = d.tasks || [];
+  const projects = d.projects || [];
+  const approvals = d.approvals || [];
+
+  const latestDelivery = timeline.find(item => ['Output', 'Decision'].includes(item.type) && !String(item.text || '').includes('Heartbeat check'));
+  const currentProject = projects.find(p => /instagram/i.test(p.name || '')) || projects.find(p => /gamal/i.test(p.name || '')) || projects[0];
+  const waitingDecision = timeline.find(item => /en attente|validation|feedback/i.test((item.text || '').toLowerCase()));
+  const topBlocker = projects.find(p => statusTone(p.health || p.status) === 'blocked') || projects.find(p => statusTone(p.health || p.status) === 'waiting');
+  const actionableApproval = approvals[0];
+  const currentTask = tasks[0];
+
+  const liveStatus = waitingDecision ? 'waiting' : topBlocker ? 'blocked' : currentTask ? 'working' : 'neutral';
+
+  return {
+    status: liveStatus,
+    title: waitingDecision
+      ? 'Waiting on Elias'
+      : currentTask
+        ? currentTask.title
+        : 'No live task signal available',
+    project: waitingDecision?.project && waitingDecision.project !== 'Unknown'
+      ? waitingDecision.project
+      : currentTask?.project || currentProject?.name || 'Unknown project',
+    summary: waitingDecision
+      ? 'The latest concrete state shows delivered work awaiting Elias validation.'
+      : currentTask
+        ? 'Current focus is inferred from local notes, not a direct live runtime feed.'
+        : 'The repo has local project and memory data, but no reliable current-task telemetry yet.',
+    progress: latestDelivery?.text || currentProject?.next_step || 'No concrete recent output found in local sources.',
+    ask: actionableApproval?.item || actionableApproval?.recommendation || 'No explicit ask captured right now.',
+    blocker: topBlocker
+      ? `${topBlocker.name}: ${topBlocker.next_step || topBlocker.status || topBlocker.health}`
+      : 'No blocker explicitly captured in structured data.',
+    confidence: waitingDecision || latestDelivery ? 'Derived from local logs' : 'Structure ready, live telemetry missing'
+  };
+}
+
+function renderLive() {
   const d = state.data;
-  const now = d.lanes?.now || [];
-  const alerts = d.alerts || [];
-  const kpis = d.kpis || [];
+  const live = deriveLiveSignal(d);
+  const projects = (d.projects || []).filter(p => p.health && p.health !== 'Unknown');
+  const priorities = projects.slice().sort((a, b) => {
+    const order = { blocked: 0, waiting: 1, risk: 2, working: 3, neutral: 4 };
+    return order[statusTone(a.health || a.status)] - order[statusTone(b.health || b.status)];
+  }).slice(0, 3);
 
   let html = '';
-
-  // KPI strip (first 3)
-  const kpiColors = ['blue', 'green', 'red'];
-  html += `<div class="kpi-strip">`;
-  [
-    { label: 'Projets', value: kpis[0]?.value || '—' },
-    { label: 'Tâches', value: kpis[1]?.value || '—' },
-    { label: 'Blocages', value: kpis[2]?.value || '—' }
-  ].forEach((k, i) => {
-    html += `
-      <div class="kpi-card">
-        <div class="kpi-value ${kpiColors[i]}">${esc(k.value)}</div>
-        <div class="kpi-label">${esc(k.label)}</div>
-      </div>
-    `;
-  });
-  html += `</div>`;
-
-  // Focus
-  html += `<div class="section-header">
-    <span class="section-title">Focus</span>
-    <span class="section-count-pill">${now.length}</span>
-  </div>`;
-
-  if (now.length === 0) {
-    html += emptyState('✅', 'Rien d\'urgent maintenant.');
-  } else {
-    now.forEach(item => {
-      const accent = projectAccentClass(item.project);
-      html += `
-        <div class="focus-card ${accent}">
-          <p class="project-label">${esc(item.project)}</p>
-          <p class="project-title">${esc(item.title)}</p>
-          <div class="project-foot">
-            <span class="pill pill-gray">${esc(item.owner)}</span>
-            <span class="pill pill-blue">${esc(item.deadline)}</span>
-          </div>
-        </div>
-      `;
-    });
-  }
-
-  // Alerts
-  if (alerts.length > 0) {
-    html += `<div class="section-header">
-      <span class="section-title">Alertes</span>
-      <span class="section-count-pill">${alerts.length}</span>
-    </div>`;
-    alerts.forEach(alert => {
-      const color = severityColor(alert.severity);
-      const iconMap = { red: '🚨', orange: '⚠️', blue: 'ℹ️', gray: '•' };
-      const icon = iconMap[color] || '⚠️';
-      const pillClass = `pill-${color}`;
-      html += `
-        <div class="alert-card" style="border-color: rgba(${color === 'red' ? '255,59,48' : color === 'orange' ? '255,149,0' : '0,122,255'},0.18);">
-          <div class="alert-icon" style="background: ${color === 'red' ? 'var(--red)' : color === 'orange' ? 'var(--orange)' : 'var(--blue)'}; font-size:16px; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${icon}</div>
-          <div class="alert-body">
-            <p class="alert-title">${esc(alert.title)}</p>
-            <p class="alert-text">${esc(alert.text)}</p>
-          </div>
-        </div>
-      `;
-    });
-  }
-
-  return html;
-}
-
-// ===========================
-// AGENTS TAB
-// ===========================
-function renderAgents() {
-  const agents = state.data.agents || [];
-  const mainAgent = agents.find(a => (a.name || '').toLowerCase().includes('dr. swanosten')) || agents[0];
-
-  let html = `<div class="section-header">
-    <span class="section-title">Équipe</span>
-    <span class="section-count-pill">1</span>
-  </div>`;
-
-  if (!mainAgent) {
-    return html + emptyState('🦅', 'Dr. Swanosten indisponible.');
-  }
-
-  const statusLow = (mainAgent.status || '').toLowerCase();
-  const isRunning = statusLow.includes('run');
-  const isBlocked = statusLow.includes('block');
-  const badgeClass = isRunning ? 'badge-running' : isBlocked ? 'badge-blocked' : 'badge-idle';
-  const dotClass  = isRunning ? 'dot-running' : isBlocked ? 'dot-blocked' : 'dot-idle';
-  const statusText = isRunning ? 'Actif' : isBlocked ? 'Bloqué' : 'Inactif';
-
   html += `
-    <details class="agent-accordion" open>
-      <summary class="agent-summary">
-        <div class="agent-row agent-row-single">
-          <div class="agent-avatar">🦅</div>
-          <div class="agent-body">
-            <p class="agent-name">Dr. Swanosten</p>
-            <p class="agent-mission">${esc(mainAgent.mission || 'Prioritize, structure, execute.')}</p>
-          </div>
-          <div class="agent-status-badge ${badgeClass}">
-            <span class="status-dot ${dotClass}"></span>
-            ${esc(statusText)}
-          </div>
+    <section class="hero card tone-${esc(live.status)}">
+      <div class="hero-top">
+        <div>
+          <p class="card-label">Live</p>
+          <h2 class="hero-title">${esc(live.title)}</h2>
+          <p class="hero-project">${esc(live.project)}</p>
         </div>
-      </summary>
-
-      <div class="agent-panel">
-        <div class="info-block">
-          <p class="info-label">Rôle</p>
-          <p class="info-value">${esc(mainAgent.role || 'Chief operator')}</p>
+        ${statusPill(live.status)}
+      </div>
+      <p class="hero-summary">${esc(live.summary)}</p>
+      <div class="hero-grid">
+        <div class="hero-block">
+          <span>Last concrete progress</span>
+          <strong>${esc(live.progress)}</strong>
         </div>
-
-        <div class="info-block">
-          <p class="info-label">Ce qu’il fait</p>
-          <p class="info-value">${esc(mainAgent.mission || 'Prioritize, structure, push approvals')}</p>
+        <div class="hero-block">
+          <span>Need from Elias</span>
+          <strong>${esc(live.ask)}</strong>
         </div>
-
-        <div class="info-block">
-          <p class="info-label">Dernier output</p>
-          <p class="info-value">${esc(mainAgent.output || '—')}</p>
+        <div class="hero-block">
+          <span>Blocker</span>
+          <strong>${esc(live.blocker)}</strong>
         </div>
-
-        <div class="info-block">
-          <p class="info-label">Workspace principal</p>
-          <p class="info-value info-code">/Users/swanosten/Desktop/OBSIDIAN/swanosten/Agent/Dr-Swanosten</p>
-        </div>
-
-        <div class="info-block">
-          <p class="info-label">Mémoire</p>
-          <p class="info-value info-code">/Users/swanosten/Desktop/OBSIDIAN/swanosten/Memory</p>
-        </div>
-
-        <div class="info-block">
-          <p class="info-label">Logs quotidiens</p>
-          <p class="info-value info-code">/Users/swanosten/Desktop/OBSIDIAN/swanosten/Memory/memory</p>
-        </div>
-
-        <div class="info-block">
-          <p class="info-label">Source runtime</p>
-          <p class="info-value info-code">${esc(mainAgent.source || 'Agent/Dr-Swanosten/.openclaw/workspace-state.json')}</p>
+        <div class="hero-block">
+          <span>Signal quality</span>
+          <strong>${esc(live.confidence)}</strong>
         </div>
       </div>
-    </details>
+    </section>
   `;
+
+  html += sectionTitle('Priority projects', `${priorities.length} visible`);
+  html += priorities.length ? priorities.map(project => `
+    <button class="project-row card" data-project-open="${esc(project.slug)}">
+      <div class="row-head">
+        <div>
+          <h3 class="row-title">${esc(project.name)}</h3>
+          <p class="row-subtitle">${esc(project.phase || project.role || 'Project')}</p>
+        </div>
+        ${statusPill(project.health || project.status)}
+      </div>
+      <p class="row-text">${esc(project.next_step || project.goal || 'No next step captured.')}</p>
+    </button>
+  `).join('') : emptyState('No priority projects available.');
+
+  const recent = (d.timeline || []).filter(item => !String(item.text || '').includes('Heartbeat check')).slice(0, 4);
+  html += sectionTitle('Recent signal', recent.length ? 'Concrete only' : 'None');
+  html += recent.length ? `<section class="stack">${recent.map(item => `
+    <article class="timeline-item card-lite">
+      <div class="timeline-meta">
+        <span>${esc(item.time || 'Unknown')}</span>
+        <span>${esc(item.actor || 'System')}</span>
+      </div>
+      <p>${esc(item.text || '—')}</p>
+    </article>`).join('')}</section>` : emptyState('No recent operational signal found.');
 
   return html;
 }
@@ -330,6 +289,7 @@ function renderAgents() {
 function renderProjects() {
   const projects = (state.data.projects || []).filter(p => (p.name || '').trim());
   const tasks = state.data.tasks || [];
+  const timeline = state.data.timeline || [];
 
   if (state.projectSlug) {
     const project = projects.find(p => p.slug === state.projectSlug);
@@ -339,260 +299,200 @@ function renderProjects() {
     }
 
     const relatedTasks = tasks.filter(task => isTaskRelatedToProject(task, project));
+    const relatedEvents = timeline.filter(item => isTimelineRelatedToProject(item, project)).slice(0, 5);
 
-    let html = `
-      <div class="section-header">
-        <button class="back-link" id="back-to-projects">← Projects</button>
+    return `
+      <div class="section-head detail-head">
+        <button class="back-button" id="back-to-projects">← Projects</button>
       </div>
-      <div class="project-detail-card">
-        <p class="project-detail-title">${esc(project.name)}</p>
-        <p class="project-detail-sub">${esc(project.phase || project.role || 'Project')}</p>
-        <div class="project-detail-meta">
-          <span class="pill pill-gray">${esc(project.health || 'Unknown')}</span>
-          <span class="pill pill-gray">${esc(project.priority || 'Unknown')}</span>
-        </div>
-        ${project.next_step ? `<div class="project-next"><strong>Next:</strong> ${esc(project.next_step)}</div>` : ''}
-      </div>
-
-      <div class="section-header">
-        <span class="section-title">Tasks</span>
-        <span class="section-count-pill">${relatedTasks.length}</span>
-      </div>
-    `;
-
-    if (!relatedTasks.length) {
-      html += emptyState('🗂️', 'No linked tasks yet for this project.');
-    } else {
-      relatedTasks.forEach(task => {
-        html += `
-          <div class="task-card">
-            <p class="task-title">${esc(task.title)}</p>
-            <p class="task-sub">${esc(task.owner)} · ${esc(task.deadline || 'No deadline')}</p>
-            <div class="task-meta">
-              <span class="pill pill-gray">${esc(task.status || 'Unknown')}</span>
-              <span class="pill pill-gray">${esc(task.priority || 'Unknown')}</span>
-            </div>
-            ${task.next ? `<div class="project-next"><strong>Next step:</strong> ${esc(task.next)}</div>` : ''}
+      <section class="card detail-card">
+        <div class="row-head">
+          <div>
+            <p class="card-label">Project</p>
+            <h2 class="detail-title">${esc(project.name)}</h2>
+            <p class="detail-subtitle">${esc(project.phase || project.role || 'Project')}</p>
           </div>
-        `;
-      });
-    }
+          ${statusPill(project.health || project.status)}
+        </div>
+        <div class="detail-grid">
+          <div><span>Owner</span><strong>${esc(project.owner || 'Unknown')}</strong></div>
+          <div><span>Priority</span><strong>${esc(project.priority || 'Unknown')}</strong></div>
+          <div><span>Timeline</span><strong>${esc(project.timeline || 'Unknown')}</strong></div>
+          <div><span>Revenue</span><strong>${esc(project.revenue || 'Unknown')}</strong></div>
+        </div>
+        ${project.goal ? `<div class="detail-panel"><span>Goal</span><strong>${esc(project.goal)}</strong></div>` : ''}
+        <div class="detail-panel"><span>Next step</span><strong>${esc(project.next_step || 'No next step captured.')}</strong></div>
+        <div class="detail-panel"><span>Blocker / risk</span><strong>${esc(project.note || project.risk || 'No explicit blocker captured.')}</strong></div>
+      </section>
 
-    queueMicrotask(() => {
-      const btn = document.getElementById('back-to-projects');
-      if (btn) btn.onclick = () => {
-        state.projectSlug = null;
-        render();
-      };
-    });
+      ${sectionTitle('Tasks', `${relatedTasks.length} linked`)}
+      ${relatedTasks.length ? relatedTasks.map(task => `
+        <section class="card-lite task-card">
+          <div class="row-head compact">
+            <h3 class="row-title">${esc(task.title)}</h3>
+            ${statusPill(task.status)}
+          </div>
+          <p class="row-subtitle">${esc(task.owner || 'Unknown owner')} · ${esc(task.deadline || 'No deadline')}</p>
+          <p class="row-text">${esc(task.next || 'No next step captured.')}</p>
+          ${task.blocker ? `<p class="minor-text">Blocker: ${esc(task.blocker)}</p>` : ''}
+        </section>
+      `).join('') : emptyState('No linked tasks yet.')}
 
-    return html;
+      ${sectionTitle('Recent project signal', `${relatedEvents.length} items`)}
+      ${relatedEvents.length ? relatedEvents.map(item => `
+        <article class="card-lite timeline-item">
+          <div class="timeline-meta">
+            <span>${esc(item.time || 'Unknown')}</span>
+            <span>${esc(item.type || 'Log')}</span>
+          </div>
+          <p>${esc(item.text || '—')}</p>
+        </article>
+      `).join('') : emptyState('No recent timeline entries matched this project.')}
+    `;
   }
 
-  let html = `<div class="section-header">
-    <span class="section-title">Projects</span>
-    <span class="section-count-pill">${projects.length}</span>
-  </div>`;
+  const sorted = projects.slice().sort((a, b) => {
+    const order = { blocked: 0, waiting: 1, risk: 2, working: 3, neutral: 4 };
+    return order[statusTone(a.health || a.status)] - order[statusTone(b.health || b.status)];
+  });
 
-  projects.forEach(project => {
-    html += `
-      <button class="project-card project-link" data-project-slug="${esc(project.slug)}">
-        <div class="project-body">
-          <p class="project-name">${esc(project.name)}</p>
-          <p class="project-role">${esc(project.phase || project.role || 'Project')}</p>
-          <div class="project-meta">
-            <span class="pill pill-gray">${esc(project.health || 'Unknown')}</span>
-            <span class="pill pill-gray">${esc(project.priority || 'Unknown')}</span>
+  return `
+    ${sectionTitle('Projects', `${sorted.length} tracked`)}
+    ${sorted.map(project => `
+      <button class="card project-row" data-project-open="${esc(project.slug)}">
+        <div class="row-head">
+          <div>
+            <h3 class="row-title">${esc(project.name)}</h3>
+            <p class="row-subtitle">${esc(project.phase || project.role || 'Project')}</p>
           </div>
+          ${statusPill(project.health || project.status)}
         </div>
+        <p class="row-text">${esc(project.next_step || project.goal || 'No next step captured.')}</p>
       </button>
-    `;
-  });
+    `).join('')}
+  `;
+}
 
-  queueMicrotask(() => {
-    document.querySelectorAll('.project-link').forEach(btn => {
-      btn.onclick = () => {
-        state.projectSlug = btn.dataset.projectSlug;
-        render();
-      };
-    });
-  });
+function renderAgent() {
+  const agent = (state.data.agents || []).find(a => /dr\. swanosten/i.test(a.name || '')) || state.data.agents?.[0];
+  const live = deriveLiveSignal(state.data);
+  if (!agent) return emptyState('No agent data available.');
 
-  return html;
+  return `
+    ${sectionTitle('Agent', 'Dr. Swanosten only')}
+    <section class="card agent-hero">
+      <div class="row-head">
+        <div>
+          <p class="card-label">Operator</p>
+          <h2 class="detail-title">Dr. Swanosten</h2>
+          <p class="detail-subtitle">${esc(agent.role || 'Chief operator')}</p>
+        </div>
+        ${statusPill(agent.status)}
+      </div>
+      <p class="hero-summary">${esc(agent.mission || 'Prioritize, structure, execute.')}</p>
+    </section>
+
+    <details class="accordion" open>
+      <summary>Mission</summary>
+      <div class="accordion-body">
+        <p>${esc(agent.mission || 'No mission captured.')}</p>
+      </div>
+    </details>
+    <details class="accordion">
+      <summary>Live organization</summary>
+      <div class="accordion-body">
+        <p><strong>Current status:</strong> ${esc(prettyStatus(agent.status))}</p>
+        <p><strong>Current signal:</strong> ${esc(live.title)}</p>
+        <p><strong>Latest output:</strong> ${esc(agent.output || 'No output captured.')}</p>
+        <p><strong>Escalations:</strong> ${esc(agent.escalations || 'Unknown')}</p>
+        <p><strong>Blockers:</strong> ${esc(agent.blockers || 'None captured')}</p>
+      </div>
+    </details>
+    <details class="accordion">
+      <summary>Folders</summary>
+      <div class="accordion-body mono-list">
+        <p>/Users/swanosten/Desktop/OBSIDIAN/swanosten/Agent/Dr-Swanosten</p>
+        <p>/Users/swanosten/Desktop/OBSIDIAN/swanosten/Memory</p>
+        <p>/Users/swanosten/Desktop/OBSIDIAN/swanosten/Memory/memory</p>
+      </div>
+    </details>
+    <details class="accordion">
+      <summary>Memory & logs</summary>
+      <div class="accordion-body">
+        <p>Shared memory lives in the Obsidian vault and is used as the current source of truth for project, decision and delivery signals.</p>
+      </div>
+    </details>
+    <details class="accordion">
+      <summary>Runtime</summary>
+      <div class="accordion-body mono-list">
+        <p>${esc(agent.source || 'Unknown source')}</p>
+        <p>${esc(agent.throughput || 'Unknown throughput')}</p>
+        <p>${esc(agent.cost || 'Unknown cost')}</p>
+      </div>
+    </details>
+  `;
+}
+
+function renderDecisions() {
+  const items = [...(state.data.approvals || []), ...(state.data.decisions || [])]
+    .filter(Boolean)
+    .filter((item, index, arr) => index === arr.findIndex(other => (other.item || other.title) === (item.item || item.title)))
+    .slice(0, 6);
+
+  return `
+    ${sectionTitle('Decisions', `${items.length} pending`)}
+    ${items.length ? items.map((item, index) => {
+      const title = item.item || item.title || 'Decision required';
+      const recommendation = item.recommendation || item.context || 'No recommendation captured.';
+      const deadline = item.deadline || item.urgency || 'No timing captured';
+      const impact = item.impact || item.type || 'Unknown impact';
+      return `
+        <section class="card decision-card">
+          <p class="card-label">Decision ${index + 1}</p>
+          <h3 class="card-title">${esc(title)}</h3>
+          <div class="decision-meta">
+            <span class="pill pill-neutral">${esc(deadline)}</span>
+            <span class="pill pill-neutral">${esc(impact)}</span>
+          </div>
+          <p class="row-text">${esc(recommendation)}</p>
+          <div class="decision-actions">
+            <button class="action-button action-primary" type="button">Approve</button>
+            <button class="action-button" type="button">Hold</button>
+            <button class="action-button" type="button">Reject</button>
+          </div>
+        </section>
+      `;
+    }).join('') : emptyState('No decisions pending.')}
+  `;
 }
 
 function isTaskRelatedToProject(task, project) {
   const taskProject = (task.project || '').toLowerCase();
   const projectName = (project.name || '').toLowerCase();
   const slugBits = (project.slug || '').toLowerCase().split('-').filter(Boolean);
-
-  if (!taskProject) return false;
-  if (projectName.includes(taskProject) || taskProject.includes(projectName)) return true;
-  return slugBits.some(bit => bit.length > 3 && taskProject.includes(bit));
+  return !!taskProject && (projectName.includes(taskProject) || taskProject.includes(projectName) || slugBits.some(bit => bit.length > 3 && taskProject.includes(bit)));
 }
 
-function agentEmoji(name) {
-  if (!name) return '🤖';
-  const n = name.toLowerCase();
-  if (n.includes('swan') || n.includes('dr')) return '🦅';
-  if (n.includes('luna')) return '🌙';
-  if (n.includes('design')) return '🎨';
-  if (n.includes('finance') || n.includes('money')) return '💰';
-  if (n.includes('pulse') || n.includes('project')) return '📊';
-  if (n.includes('openclaw') || n.includes('workspace')) return '⚙️';
-  return '⚡';
+function isTimelineRelatedToProject(item, project) {
+  const itemProject = (item.project || '').toLowerCase();
+  const projectName = (project.name || '').toLowerCase();
+  const slugBits = (project.slug || '').toLowerCase().split('-').filter(Boolean);
+  return itemProject && (projectName.includes(itemProject) || itemProject.includes(projectName) || slugBits.some(bit => bit.length > 3 && itemProject.includes(bit)));
 }
 
-// ===========================
-// DECIDE TAB
-// ===========================
-function renderDecide() {
-  const decisions = state.data.decisions || [];
-  const approvals = state.data.approvals || [];
-
-  // Merge & dedupe by title
-  const allRaw = [...decisions, ...approvals];
-  const seen = new Set();
-  const all = allRaw.filter(item => {
-    const key = (item.title || item.item || '').toLowerCase().trim();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, 6);
-
-  let html = `<div class="section-header">
-    <span class="section-title">Décisions</span>
-    <span class="section-count-pill">${all.length}</span>
-  </div>`;
-
-  if (all.length === 0) {
-    return html + emptyState('✅', 'Aucune décision en attente.');
-  }
-
-  all.forEach((item, i) => {
-    const title = item.title || item.item || 'Décision requise';
-    const reco  = item.recommendation || item.context || '';
-    const impact = item.impact || '';
-    const urgency = item.urgency || item.deadline || '';
-
-    html += `
-      <div class="decision-card">
-        <p class="decision-number">Décision #${i + 1}</p>
-        <p class="decision-question">${esc(title)}</p>
-        ${impact ? `<div class="decision-meta"><span class="pill pill-blue">${esc(urgency)}</span><span class="pill pill-gray">Impact: ${esc(impact)}</span></div>` : ''}
-        ${reco ? `<div class="decision-reco">${esc(reco)}</div>` : ''}
-        <div class="decision-actions">
-          <button class="btn primary">Approuver</button>
-          <button class="btn">Différer</button>
-          <button class="btn danger">Rejeter</button>
-        </div>
-      </div>
-    `;
-  });
-
-  return html;
-}
-
-// ===========================
-// LOG TAB — Projects + Timeline
-// ===========================
-function renderLog() {
-  const projects = (state.data.projects || []).filter(p => p.health && p.health !== 'Unknown');
-  const timeline = (state.data.timeline || [])
-    .filter(t => t.time && t.time !== 'unknown')
-    .slice(0, 15);
-
-  let html = '';
-
-  // Projects quick view
-  if (projects.length > 0) {
-    html += `<div class="section-header">
-      <span class="section-title">Projets</span>
-      <span class="section-count-pill">${projects.length}</span>
-    </div>`;
-
-    projects.forEach(p => {
-      const color = healthColor(p.health);
-      const colorMap = { green: '#34c759', red: '#ff3b30', orange: '#ff9500', blue: '#007aff', gray: '#aeaeb2' };
-      const dotColor = colorMap[color] || colorMap.gray;
-
-      html += `
-        <div class="project-card">
-          <div class="project-color-dot" style="background: ${dotColor};"></div>
-          <div class="project-body">
-            <p class="project-name">${esc(p.name)}</p>
-            <p class="project-role">${esc(p.role || p.phase || '')}</p>
-            <div class="project-meta">
-              <span class="pill pill-${color}">${esc(p.health)}</span>
-              ${p.priority && p.priority !== 'Unknown' ? `<span class="pill pill-gray">${esc(p.priority)}</span>` : ''}
-              ${p.revenue ? `<span class="pill pill-green">${esc(p.revenue)}</span>` : ''}
-            </div>
-            ${p.next_step ? `<div class="project-next"><strong>Next:</strong> ${esc(p.next_step)}</div>` : ''}
-          </div>
-        </div>
-      `;
-    });
-  }
-
-  // Timeline
-  if (timeline.length > 0) {
-    html += `<div class="section-header">
-      <span class="section-title">Activité</span>
-      <span class="section-count-pill">${timeline.length}</span>
-    </div>`;
-
-    html += `<div class="timeline-group">`;
-    timeline.forEach(item => {
-      const typeColors = {
-        'Blocker': '#ff3b30', 'Output': '#34c759',
-        'Decision': '#007aff', 'Log': '#aeaeb2'
-      };
-      const dotColor = typeColors[item.type] || '#aeaeb2';
-      html += `
-        <div class="log-item">
-          <div class="log-type-dot" style="background: ${dotColor};"></div>
-          <div class="log-time">${esc(item.time)}</div>
-          <div class="log-body">
-            <p class="log-text">${esc(item.text || item.type || '—')}</p>
-            <p class="log-actor">${esc(item.actor || '')}${item.project ? ' · ' + esc(item.project) : ''}</p>
-          </div>
-        </div>
-      `;
-    });
-    html += `</div>`;
-  }
-
-  if (!projects.length && !timeline.length) {
-    html += emptyState('📋', 'Aucune activité récente.');
-  }
-
-  return html;
-}
-
-// ===========================
-// EMPTY & ERROR STATES
-// ===========================
-function emptyState(icon, text) {
-  return `
-    <div class="empty-state">
-      <div class="empty-state-icon">${icon}</div>
-      <p>${esc(text)}</p>
-    </div>
-  `;
+function emptyState(text) {
+  return `<section class="empty-state"><p>${esc(text)}</p></section>`;
 }
 
 function renderErrorState() {
   return `
-    <div class="error-card">
-      <div class="error-icon">⚠️</div>
-      <p class="error-title">Données indisponibles</p>
-      <p class="error-sub">Lance le serveur local pour charger les données live.</p>
-      <code class="error-code">cd Mission-Control-Mobile<br>python3 -m http.server 8080</code>
-    </div>
+    <section class="card error-card">
+      <p class="card-label">Data</p>
+      <h2 class="card-title">Unable to load local data</h2>
+      <p class="row-text">Run a local server so the static app can fetch JSON files.</p>
+      <pre class="code-block">python3 -m http.server 8080</pre>
+    </section>
   `;
 }
 
-// ===========================
-// START
-// ===========================
 document.addEventListener('DOMContentLoaded', init);
