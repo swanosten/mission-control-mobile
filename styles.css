@@ -24,14 +24,15 @@
   --separator:      rgba(60, 60, 67, 0.12);
   --separator-dark: rgba(60, 60, 67, 0.22);
 
-  /* Apple accent colors */
-  --blue:   #007aff;
-  --green:  #34c759;
-  --orange: #ff9500;
-  --red:    #ff3b30;
-  --purple: #af52de;
-  --yellow: #ffcc00;
-  --teal:   #5ac8fa;
+  /* No accent colors — strict black/white/gray only */
+  --blue:   #1d1d1f;
+  --green:  #1d1d1f;
+  --orange: #6e6e73;
+  --red:    #1d1d1f;
+  --purple: #6e6e73;
+  --yellow: #6e6e73;
+  --teal:   #6e6e73;
+  --accent: #1d1d1f;
 
   /* Layout */
   --radius-sm:  10px;
@@ -109,7 +110,7 @@ button {
 .header-date {
   font-size: 13px;
   font-weight: 500;
-  color: var(--blue);
+  color: var(--text-primary);
   letter-spacing: -0.01em;
   margin-bottom: 1px;
 }
@@ -136,7 +137,7 @@ button {
   align-items: center;
   justify-content: center;
   background: var(--bg-card);
-  color: var(--blue);
+  color: var(--text-primary);
   box-shadow: var(--shadow-sm);
   transition: transform 0.15s, opacity 0.15s;
 }
@@ -295,11 +296,11 @@ button {
   letter-spacing: 0.01em;
 }
 
-.pill-blue   { background: rgba(0,122,255,0.12); color: var(--blue); }
-.pill-green  { background: rgba(52,199,89,0.12); color: var(--green); }
-.pill-orange { background: rgba(255,149,0,0.12); color: var(--orange); }
-.pill-red    { background: rgba(255,59,48,0.12); color: var(--red); }
-.pill-purple { background: rgba(175,82,222,0.12); color: var(--purple); }
+.pill-blue   { background: rgba(0,0,0,0.06); color: var(--text-primary); }
+.pill-green  { background: rgba(0,0,0,0.06); color: var(--text-primary); }
+.pill-orange { background: rgba(0,0,0,0.06); color: var(--text-secondary); }
+.pill-red    { background: rgba(0,0,0,0.06); color: var(--text-primary); }
+.pill-purple { background: rgba(0,0,0,0.06); color: var(--text-secondary); }
 .pill-gray   { background: var(--bg-secondary); color: var(--text-secondary); }
 
 /* ===========================
@@ -329,10 +330,10 @@ button {
   margin-bottom: 4px;
 }
 
-.kpi-value.blue   { color: var(--blue); }
-.kpi-value.green  { color: var(--green); }
-.kpi-value.red    { color: var(--red); }
-.kpi-value.orange { color: var(--orange); }
+.kpi-value.blue   { color: var(--text-primary); }
+.kpi-value.green  { color: var(--text-primary); }
+.kpi-value.red    { color: var(--text-primary); }
+.kpi-value.orange { color: var(--text-secondary); }
 
 .kpi-label {
   font-size: 11px;
@@ -365,14 +366,14 @@ button {
   top: 0;
   bottom: 0;
   width: 4px;
-  background: var(--blue);
+  background: var(--text-primary);
   border-radius: 4px 0 0 4px;
 }
 
-.focus-card.orange::before { background: var(--orange); }
-.focus-card.green::before  { background: var(--green); }
-.focus-card.red::before    { background: var(--red); }
-.focus-card.purple::before { background: var(--purple); }
+.focus-card.orange::before { background: var(--text-secondary); }
+.focus-card.green::before  { background: var(--text-primary); }
+.focus-card.red::before    { background: var(--text-primary); }
+.focus-card.purple::before { background: var(--text-secondary); }
 
 .focus-card .project-label {
   font-size: 12px;
@@ -404,11 +405,11 @@ button {
    ALERT CARD — NOW tab
    =========================== */
 .alert-card {
-  background: rgba(255,59,48,0.05);
+  background: rgba(0,0,0,0.04);
   border-radius: var(--radius-lg);
   padding: 14px 16px;
   margin-bottom: 10px;
-  border: 1px solid rgba(255,59,48,0.15);
+  border: 1px solid rgba(0,0,0,0.06);
   display: flex;
   gap: 12px;
   align-items: flex-start;
@@ -418,7 +419,7 @@ button {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: var(--red);
+  background: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -499,9 +500,9 @@ button {
   border-radius: 999px;
 }
 
-.badge-running { background: rgba(52,199,89,0.12); color: var(--green); }
+.badge-running { background: rgba(0,0,0,0.06); color: var(--text-primary); }
 .badge-idle    { background: var(--bg-secondary); color: var(--text-secondary); }
-.badge-blocked { background: rgba(255,59,48,0.12); color: var(--red); }
+.badge-blocked { background: rgba(0,0,0,0.06); color: var(--text-primary); }
 
 .status-dot {
   width: 7px;
@@ -509,9 +510,9 @@ button {
   border-radius: 50%;
 }
 
-.dot-running { background: var(--green); }
+.dot-running { background: var(--text-primary); }
 .dot-idle    { background: var(--text-tertiary); }
-.dot-blocked { background: var(--red); }
+.dot-blocked { background: var(--text-primary); }
 
 /* ===========================
    DECIDE TAB
@@ -527,7 +528,7 @@ button {
 .decision-number {
   font-size: 12px;
   font-weight: 600;
-  color: var(--blue);
+  color: var(--text-primary);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   margin-bottom: 8px;
@@ -582,13 +583,13 @@ button {
 .btn:active { transform: scale(0.96); opacity: 0.8; }
 
 .btn.primary {
-  background: var(--blue);
+  background: var(--text-primary);
   color: #fff;
 }
 
 .btn.danger {
-  background: rgba(255,59,48,0.1);
-  color: var(--red);
+  background: rgba(0,0,0,0.05);
+  color: var(--text-primary);
 }
 
 /* ===========================
@@ -809,7 +810,7 @@ button {
   min-width: 0;
 }
 
-.tab.active { color: var(--blue); }
+.tab.active { color: var(--text-primary); }
 
 .tab svg {
   transition: transform 0.15s;
