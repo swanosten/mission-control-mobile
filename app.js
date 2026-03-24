@@ -3,6 +3,7 @@
 // ===========================
 const state = {
   section: 'now',
+  projectSlug: null,
   data: null,
   error: null
 };
@@ -103,6 +104,7 @@ function setupTabs() {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       state.section = tab.dataset.section;
+      state.projectSlug = null;
       render();
     });
   });
@@ -129,7 +131,7 @@ function render() {
     return;
   }
 
-  const renderers = { now: renderNow, agents: renderAgents, decide: renderDecide, log: renderLog };
+  const renderers = { now: renderNow, agents: renderAgents, projects: renderProjects, decide: renderDecide, log: renderLog };
   feed.innerHTML = (renderers[state.section] || renderNow)();
   feed.scrollTop = 0;
 }
@@ -323,6 +325,110 @@ function renderAgents() {
   `;
 
   return html;
+}
+
+function renderProjects() {
+  const projects = (state.data.projects || []).filter(p => (p.name || '').trim());
+  const tasks = state.data.tasks || [];
+
+  if (state.projectSlug) {
+    const project = projects.find(p => p.slug === state.projectSlug);
+    if (!project) {
+      state.projectSlug = null;
+      return renderProjects();
+    }
+
+    const relatedTasks = tasks.filter(task => isTaskRelatedToProject(task, project));
+
+    let html = `
+      <div class="section-header">
+        <button class="back-link" id="back-to-projects">← Projects</button>
+      </div>
+      <div class="project-detail-card">
+        <p class="project-detail-title">${esc(project.name)}</p>
+        <p class="project-detail-sub">${esc(project.phase || project.role || 'Project')}</p>
+        <div class="project-detail-meta">
+          <span class="pill pill-gray">${esc(project.health || 'Unknown')}</span>
+          <span class="pill pill-gray">${esc(project.priority || 'Unknown')}</span>
+        </div>
+        ${project.next_step ? `<div class="project-next"><strong>Next:</strong> ${esc(project.next_step)}</div>` : ''}
+      </div>
+
+      <div class="section-header">
+        <span class="section-title">Tasks</span>
+        <span class="section-count-pill">${relatedTasks.length}</span>
+      </div>
+    `;
+
+    if (!relatedTasks.length) {
+      html += emptyState('🗂️', 'No linked tasks yet for this project.');
+    } else {
+      relatedTasks.forEach(task => {
+        html += `
+          <div class="task-card">
+            <p class="task-title">${esc(task.title)}</p>
+            <p class="task-sub">${esc(task.owner)} · ${esc(task.deadline || 'No deadline')}</p>
+            <div class="task-meta">
+              <span class="pill pill-gray">${esc(task.status || 'Unknown')}</span>
+              <span class="pill pill-gray">${esc(task.priority || 'Unknown')}</span>
+            </div>
+            ${task.next ? `<div class="project-next"><strong>Next step:</strong> ${esc(task.next)}</div>` : ''}
+          </div>
+        `;
+      });
+    }
+
+    queueMicrotask(() => {
+      const btn = document.getElementById('back-to-projects');
+      if (btn) btn.onclick = () => {
+        state.projectSlug = null;
+        render();
+      };
+    });
+
+    return html;
+  }
+
+  let html = `<div class="section-header">
+    <span class="section-title">Projects</span>
+    <span class="section-count-pill">${projects.length}</span>
+  </div>`;
+
+  projects.forEach(project => {
+    html += `
+      <button class="project-card project-link" data-project-slug="${esc(project.slug)}">
+        <div class="project-body">
+          <p class="project-name">${esc(project.name)}</p>
+          <p class="project-role">${esc(project.phase || project.role || 'Project')}</p>
+          <div class="project-meta">
+            <span class="pill pill-gray">${esc(project.health || 'Unknown')}</span>
+            <span class="pill pill-gray">${esc(project.priority || 'Unknown')}</span>
+          </div>
+        </div>
+      </button>
+    `;
+  });
+
+  queueMicrotask(() => {
+    document.querySelectorAll('.project-link').forEach(btn => {
+      btn.onclick = () => {
+        state.projectSlug = btn.dataset.projectSlug;
+        render();
+      };
+    });
+  });
+
+  return html;
+}
+
+function isTaskRelatedToProject(task, project) {
+  const taskProject = (task.project || '').toLowerCase();
+  const projectName = (project.name || '').toLowerCase();
+  const slugBits = (project.slug || '').toLowerCase().split('-').filter(Boolean);
+
+  if (!taskProject) return false;
+  if (projectName.includes(taskProject) || taskProject.includes(projectName)) return true;
+  return slugBits.some(bit => bit.length > 3 && taskProject.includes(bit));
 }
 
 function agentEmoji(name) {
